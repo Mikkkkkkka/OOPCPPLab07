@@ -1,0 +1,10 @@
+{
+    "cSpell.words": [
+        "RINGBUFFER",
+    ],
+    "files.associations": {
+        "iterator": "cpp",
+        "memory": "cpp",
+        "optional": "cpp"
+    },
+}
