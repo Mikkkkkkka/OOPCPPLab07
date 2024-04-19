@@ -31,7 +31,7 @@ public:
         using value_type = T;
         using pointer = T*;
         using reference = T&;
-        using difference_type = unsigned;
+        using difference_type = int;
 
         Iterator(unsigned _index, RingBuffer* _buffer)
         {
@@ -44,16 +44,16 @@ public:
             index = other.index;
         }
 
-        // inline Iterator& operator+=(difference_type i)
-        // {
-        //     index = fStep(index, i);
-        //     return *this;
-        // }
-        // inline Iterator& operator-=(difference_type i)
-        // {
-        //     index = bStep(index, i);
-        //     return *this;
-        // }
+        inline Iterator& operator+=(difference_type i)
+        {
+            index = fStep(index, i);
+            return *this;
+        }
+        inline Iterator& operator-=(difference_type i)
+        {
+            index = bStep(index, i);
+            return *this;
+        }
         inline reference operator*() const
         {
             return buffer->body[index];
@@ -67,57 +67,52 @@ public:
             return buffer->body[fStep(index, i)];
         }
 
-        //  Инкремент / Декремент 
+        // Арифметика
         inline Iterator& operator++()
         {
             index = fStep(index);
             return *this;
         }
-        // inline Iterator& operator--()
-        // {
-        //     index = bStep(index);
-        //     return *this;
-        // }
+        inline Iterator& operator--()
+        {
+            index = bStep(index);
+            return *this;
+        }
         inline Iterator operator++(int)
         {
             Iterator temp(*this);
             ++(*this);
             return temp;
         }
-        // inline Iterator operator--(int)
-        // {
-        //     Iterator temp(*this);
-        //     --(*this);
-        //     return temp;
-        // }
-
-        // Арифметика
-        // inline Iterator operator+(const Iterator& other)
-        // {
-        //     return Iterator(fStep(index, other.index), buffer);
-        // }
-        // inline Iterator operator+(const difference_type& i) const
-        // {
-        //     return Iterator(fStep(index, i), buffer);
-        // }
-        // inline Iterator operator-(const difference_type& i) const
-        // {
-        //     return Iterator(bStep(index, i), buffer);
-        // }
-        // inline difference_type operator-(const Iterator& other) const
-        // {
-        //     if (index < buffer->head and buffer->head <= other.index) { return index + buffer->_size - other.index; }
-        //     if (other.index < buffer->head and buffer->head <= index) { return index - other.index + buffer->_size; }
-        //     return index - other.index;
-        // }
-        // friend inline Iterator operator+(const difference_type& i, const Iterator& it)
-        // {
-        //     return Iterator(it.index + i, it.buffer);
-        // }
-        // friend inline Iterator operator-(const difference_type& i, const Iterator& it)
-        // {
-        //     return Iterator(it.index - i, it.buffer);
-        // }
+        inline Iterator operator--(int)
+        {
+            Iterator temp(*this);
+            --(*this);
+            return temp;
+        }
+        inline difference_type operator-(const Iterator& other) const
+        {
+            if (index == other.index) { return 0; }
+            if (index <= buffer->tail and buffer->tail < other.index) { return index + buffer->_size - other.index + 1; }
+            if (other.index <= buffer->tail and buffer->tail < index) { return -(other.index + buffer->_size - index + 1); }
+            return index - other.index;
+        }
+        inline Iterator operator+(const difference_type& i) const
+        {
+            return Iterator(fStep(index, i), buffer);
+        }
+        inline Iterator operator-(const difference_type& i) const
+        {
+            return Iterator(bStep(index, i), buffer);
+        }
+        friend inline Iterator operator+(const difference_type& i, const Iterator& it)
+        {
+            return Iterator(fStep(it.index, i), it.buffer);
+        }
+        friend inline Iterator operator-(const difference_type& i, const Iterator& it)
+        {
+            return Iterator(bStep(it.index, i), it.buffer);
+        }
 
         // Сравнение
         inline bool operator==(const Iterator& other) const
@@ -128,28 +123,28 @@ public:
         {
             return !(*this == other);
         }
-        // bool operator<(const Iterator& other) const
-        // {
-        //     if (index == other.index) { return false; }
-        //     if (index <= buffer->tail and buffer->tail < other.index) { return false; }
-        //     if (other.index <= buffer->tail and buffer->tail < index) { return true; }
-        //     return index < other.index;
-        // }
-        // bool operator>(const Iterator& other) const
-        // {
-        //     if (index == other.index) { return false; }
-        //     if (index >= buffer->tail and buffer->tail > other.index) { return false; }
-        //     if (other.index >= buffer->tail and buffer->tail > index) { return true; }
-        //     return index < other.index;
-        // }
-        // bool operator<=(const Iterator& other) const
-        // {
-        //     return !(*this > other);
-        // }
-        // bool operator>=(const Iterator& other) const
-        // {
-        //     return !(*this < other);
-        // }
+        bool operator<(const Iterator& other) const
+        {
+            if (index == other.index) { return false; }
+            if (index <= buffer->tail and buffer->tail < other.index) { return false; }
+            if (other.index <= buffer->tail and buffer->tail < index) { return true; }
+            return index < other.index;
+        }
+        bool operator>(const Iterator& other) const
+        {
+            if (index == other.index) { return false; }
+            if (index >= buffer->tail and buffer->tail > other.index) { return false; }
+            if (other.index >= buffer->tail and buffer->tail > index) { return true; }
+            return index < other.index;
+        }
+        bool operator<=(const Iterator& other) const
+        {
+            return !(*this > other);
+        }
+        bool operator>=(const Iterator& other) const
+        {
+            return !(*this < other);
+        }
 
     };
 
@@ -179,12 +174,21 @@ public:
 
     void insert(Iterator it, int data)
     {
-        Iterator last = end();
-        for (; it != last; it++)
-            std::swap(*it, data);
-        *it = data;
-        tail = fStep(tail);
-        ++_size;
+        if (end() <= it and it < begin())
+            return;
+        if (std::abs(it - begin()) < std::abs(it - end()))
+        {
+            --it;
+            for (; it != begin() - 1; --it)
+                std::swap(*it, data);
+            push_front(data);
+        }
+        else
+        {
+            for (; it != end(); ++it)
+                std::swap(*it, data);
+            push_back(data);
+        }
     }
 
     void erase(Iterator it)
@@ -196,13 +200,6 @@ public:
             *it = *(it + 1);
         tail = bStep(tail);
         --_size;
-    }
-
-    void debugPrint() // Отладка 
-    {
-        for (int i = 0; i < N + 1; i++)
-            std::cout << body[i];
-        std::cout << '\n' << hlppos() << '\n';
     }
 
     void push_back(T data)
@@ -261,6 +258,13 @@ public:
         if (index == tail)
             ++index;
         return body[index];
+    }
+
+    void debugPrint() // Отладка 
+    {
+        for (int i = 0; i < N + 1; i++)
+            std::cout << body[i];
+        std::cout << '\n' << hlppos() << '\n';
     }
 
     std::string hlppos() const
