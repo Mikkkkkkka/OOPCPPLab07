@@ -31,7 +31,7 @@ public:
         using value_type = T;
         using pointer = T*;
         using reference = T&;
-        using difference_type = unsigned;
+        using difference_type = int;
 
         Iterator(unsigned _index, RingBuffer* _buffer)
         {
@@ -104,12 +104,13 @@ public:
         // {
         //     return Iterator(bStep(index, i), buffer);
         // }
-        // inline difference_type operator-(const Iterator& other) const
-        // {
-        //     if (index < buffer->head and buffer->head <= other.index) { return index + buffer->_size - other.index; }
-        //     if (other.index < buffer->head and buffer->head <= index) { return index - other.index + buffer->_size; }
-        //     return index - other.index;
-        // }
+        inline difference_type operator-(const Iterator& other) const
+        {
+            if (index == other.index) { return 0; }
+            if (index <= buffer->tail and buffer->tail < other.index) { return index + buffer->_size - other.index + 1; }
+            if (other.index <= buffer->tail and buffer->tail < index) { return -(other.index + buffer->_size - index + 1); }
+            return index - other.index;
+        }
         // friend inline Iterator operator+(const difference_type& i, const Iterator& it)
         // {
         //     return Iterator(it.index + i, it.buffer);
