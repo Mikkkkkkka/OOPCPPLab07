@@ -11,24 +11,14 @@ void out(int x)
 
 int main()
 {
-    RingBuffer<int, 8> rb;
+    RingBuffer<int, 6> rb;
 
-
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < 6; i++)
         rb.push_back(i);
-    rb.print();
+    rb.debugPrint();
+    std::cout << "7: " << *std::find(rb.begin(), rb.end(), 7) << '\n';
     std::for_each(rb.begin(), rb.end(), out);
-    std::cout << '\n' << *std::find(rb.begin(), rb.end(), 8) << '\n';
-
-    rb.push_back(8);
-    rb.print();
-    std::for_each(rb.begin(), rb.end(), out);
-    std::cout << '\n' << *std::find(rb.begin(), rb.end(), 8) << '\n';
-
-    rb.push_back(9);
-    rb.print();
-    std::for_each(rb.begin(), rb.end(), out);
-    std::cout << '\n' << *std::find(rb.begin(), rb.end(), 9) << '\n';
+    std::cout << '\n';
 
     return 0;
 }
