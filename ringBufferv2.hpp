@@ -32,6 +32,7 @@ public:
         using pointer = T*;
         using reference = T&;
         using difference_type = int;
+        using difference_type = int;
 
         Iterator(unsigned _index, RingBuffer* _buffer)
         {
