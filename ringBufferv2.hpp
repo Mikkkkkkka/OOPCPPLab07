@@ -6,19 +6,31 @@
 #include <vector>
 
 
-template<typename T, unsigned N>
+template<typename T>
 class RingBuffer
 {
     T* body;
     unsigned head, tail;
     unsigned _size;
+    unsigned _capacity;
 
     void simple_error() { std::cout << "AAA\n"; exit(-1); }
 
-    static unsigned fStep(unsigned I, const unsigned& step = 1) { return (I + N + 1 + step) % (N + 1); }
-    static unsigned bStep(unsigned I, const unsigned& step = 1) { return (I + N + 1 - step) % (N + 1); }
+    unsigned fStep(unsigned I, const unsigned& step = 1) { return (I + _capacity + 1 + step) % (_capacity + 1); }
+    unsigned bStep(unsigned I, const unsigned& step = 1) { return (I + _capacity + 1 - step) % (_capacity + 1); }
 
 public:
+
+    RingBuffer(unsigned capacity)
+    {
+        _size = 0;
+        _capacity = capacity;
+        head = tail = 0;
+        body = (T*)calloc(_capacity + 1, sizeof(T)); // _capacity + 1, потому что tail должен указывать на незанятую ячейку
+        if (!body) { simple_error(); }
+    }
+
+    ~RingBuffer() { free(body); }
 
     class Iterator
     {
@@ -32,99 +44,93 @@ public:
         using pointer = T*;
         using reference = T&;
         using difference_type = int;
-        using difference_type = int;
 
         Iterator(unsigned _index, RingBuffer* _buffer)
         {
             buffer = _buffer;
-            index = fStep(0, _index);
-        }
-        Iterator(const Iterator& other)
-        {
-            buffer = other.buffer;
-            index = other.index;
+            index = buffer->fStep(0, _index);
         }
 
-        inline Iterator& operator+=(difference_type i)
+        Iterator& operator+=(difference_type i)
         {
-            index = fStep(index, i);
+            index = buffer->fStep(index, i);
             return *this;
         }
-        inline Iterator& operator-=(difference_type i)
+        Iterator& operator-=(difference_type i)
         {
-            index = bStep(index, i);
+            index = buffer->bStep(index, i);
             return *this;
         }
-        inline reference operator*() const
+        reference operator*() const
         {
             return buffer->body[index];
         }
-        inline pointer operator->() const
+        pointer operator->() const
         {
             return buffer->body + index;
         }
-        inline reference operator[](int i) const
+        reference operator[](int i) const
         {
-            return buffer->body[fStep(index, i)];
+            return buffer->body[buffer->fStep(index, i)];
         }
 
         // Арифметика
-        inline Iterator& operator++()
+        Iterator& operator++()
         {
-            index = fStep(index);
+            index = buffer->fStep(index);
             return *this;
         }
-        inline Iterator& operator--()
+        Iterator& operator--()
         {
-            index = bStep(index);
+            index = buffer->bStep(index);
             return *this;
         }
-        inline Iterator operator++(int)
+        Iterator operator++(int)
         {
             Iterator temp(*this);
             ++(*this);
             return temp;
         }
-        inline Iterator operator--(int)
+        Iterator operator--(int)
         {
             Iterator temp(*this);
             --(*this);
             return temp;
         }
-        inline difference_type operator-(const Iterator& other) const
+        difference_type operator-(const Iterator& other) const
         {
             if (index == other.index) { return 0; }
             if (index <= buffer->tail and buffer->tail < other.index) { return index + buffer->_size - other.index + 1; }
             if (other.index <= buffer->tail and buffer->tail < index) { return -(other.index + buffer->_size - index + 1); }
             return index - other.index;
         }
-        inline Iterator operator+(const difference_type& i) const
+        Iterator operator+(const difference_type& i) const
         {
-            return Iterator(fStep(index, i), buffer);
+            return Iterator(buffer->fStep(index, i), buffer);
         }
-        inline Iterator operator-(const difference_type& i) const
+        Iterator operator-(const difference_type& i) const
         {
-            return Iterator(bStep(index, i), buffer);
+            return Iterator(buffer->bStep(index, i), buffer);
         }
-        friend inline Iterator operator+(const difference_type& i, const Iterator& it)
+        friend Iterator operator+(const difference_type& i, const Iterator& it)
         {
-            return Iterator(fStep(it.index, i), it.buffer);
+            return Iterator(it.buffer->fStep(it.index, i), it.buffer);
         }
-        friend inline Iterator operator-(const difference_type& i, const Iterator& it)
+        friend Iterator operator-(const difference_type& i, const Iterator& it)
         {
-            return Iterator(bStep(it.index, i), it.buffer);
+            return Iterator(it.buffer->bStep(it.index, i), it.buffer);
         }
 
         // Сравнение
-        inline bool operator==(const Iterator& other) const
+        bool operator==(const Iterator& other) const
         {
             return index == other.index;
         }
-        inline bool operator!=(const Iterator& other) const
+        bool operator!=(const Iterator& other) const
         {
             return !(*this == other);
         }
-        bool operator<(const Iterator& other) const
+        operator<(const Iterator& other) const
         {
             if (index == other.index) { return false; }
             if (index <= buffer->tail and buffer->tail < other.index) { return false; }
@@ -146,18 +152,7 @@ public:
         {
             return !(*this < other);
         }
-
     };
-
-    RingBuffer()
-    {
-        _size = 0;
-        head = tail = 0;
-        body = (T*)calloc(N + 1, sizeof(T)); // N + 1, потому что tail должен указывать на незанятую ячейку
-        if (!body) { simple_error(); }
-    }
-
-    ~RingBuffer() { free(body); }
 
     Iterator begin()
     {
@@ -263,14 +258,14 @@ public:
 
     void debugPrint() // Отладка 
     {
-        for (int i = 0; i < N + 1; i++)
+        for (int i = 0; i < _capacity + 1; i++)
             std::cout << body[i];
         std::cout << '\n' << hlppos() << '\n';
     }
 
     std::string hlppos() const
     {
-        std::string res(N + 1, '-');
+        std::string res(_capacity + 1, '-');
         res[head] = 'h';
         res[tail] = 't';
         return res;
