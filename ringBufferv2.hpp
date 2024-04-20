@@ -3,14 +3,13 @@
 
 #include <iterator>
 #include <iostream>
-#include <vector>
-
+#include <string> // ДЛЯ ОТАЛДКИ
 
 template<typename T>
 class RingBuffer
 {
-    T* body;
-    unsigned head, tail;
+    T* _body;
+    unsigned _head, _tail;
     unsigned _size;
     unsigned _capacity;
 
@@ -25,25 +24,25 @@ public:
     {
         _size = 0;
         _capacity = capacity;
-        head = tail = 0;
-        body = (T*)calloc(_capacity + 1, sizeof(T)); // _capacity + 1, потому что tail должен указывать на незанятую ячейку
-        if (!body) { simple_error(); }
+        _head = _tail = 0;
+        _body = (T*)calloc(_capacity + 1, sizeof(T)); // _capacity + 1, потому что _tail должен указывать на незанятую ячейку
+        if (!_body) { simple_error(); }
     }
 
-    ~RingBuffer() { free(body); }
+    ~RingBuffer() { free(_body); }
 
-    void reserve(unsigned newSize)
+    void resize(unsigned newSize)
     {
         T* temp = (T*)calloc(newSize + 1, sizeof(T));
         if (!temp) { simple_error(); }
         for (int i = 0; i < _size and i < newSize; i++)
-            temp[i] = body[fStep(head, i)];
-        free(body);
-        body = temp;
+            temp[i] = _body[fStep(_head, i)];
+        free(_body);
+        _body = temp;
         _capacity = newSize;
         _size = std::min(_size, newSize);
-        head = 0;
-        tail = _size;
+        _head = 0;
+        _tail = _size;
     }
 
     class Iterator
@@ -77,15 +76,15 @@ public:
         }
         reference operator*() const
         {
-            return buffer->body[index];
+            return buffer->_body[index];
         }
         pointer operator->() const
         {
-            return buffer->body + index;
+            return buffer->_body + index;
         }
         reference operator[](int i) const
         {
-            return buffer->body[buffer->fStep(index, i)];
+            return buffer->_body[buffer->fStep(index, i)];
         }
 
         // Арифметика
@@ -114,8 +113,8 @@ public:
         difference_type operator-(const Iterator& other) const
         {
             if (index == other.index) { return 0; }
-            if (index <= buffer->tail and buffer->tail < other.index) { return index + buffer->_size - other.index + 1; }
-            if (other.index <= buffer->tail and buffer->tail < index) { return -(other.index + buffer->_size - index + 1); }
+            if (index <= buffer->_tail and buffer->_tail < other.index) { return index + buffer->_size - other.index + 1; }
+            if (other.index <= buffer->_tail and buffer->_tail < index) { return -(other.index + buffer->_size - index + 1); }
             return index - other.index;
         }
         Iterator operator+(const difference_type& i) const
@@ -147,15 +146,15 @@ public:
         operator<(const Iterator& other) const
         {
             if (index == other.index) { return false; }
-            if (index <= buffer->tail and buffer->tail < other.index) { return false; }
-            if (other.index <= buffer->tail and buffer->tail < index) { return true; }
+            if (index <= buffer->_tail and buffer->_tail < other.index) { return false; }
+            if (other.index <= buffer->_tail and buffer->_tail < index) { return true; }
             return index < other.index;
         }
         bool operator>(const Iterator& other) const
         {
             if (index == other.index) { return false; }
-            if (index >= buffer->tail and buffer->tail > other.index) { return false; }
-            if (other.index >= buffer->tail and buffer->tail > index) { return true; }
+            if (index >= buffer->_tail and buffer->_tail > other.index) { return false; }
+            if (other.index >= buffer->_tail and buffer->_tail > index) { return true; }
             return index < other.index;
         }
         bool operator<=(const Iterator& other) const
@@ -170,11 +169,11 @@ public:
 
     Iterator begin()
     {
-        return Iterator(head, this);
+        return Iterator(_head, this);
     }
     Iterator end()
     {
-        return Iterator(tail, this);
+        return Iterator(_tail, this);
     }
 
     unsigned size() const
@@ -208,48 +207,48 @@ public:
             return;
         for (; it != last; ++it)
             *it = *(it + 1);
-        tail = bStep(tail);
+        _tail = bStep(_tail);
         --_size;
     }
 
     void push_back(T data)
     {
-        if (head == fStep(tail))
+        if (_head == fStep(_tail))
         {
-            head = fStep(head);
+            _head = fStep(_head);
             --_size;
         }
-        body[tail] = data;
-        tail = fStep(tail);
+        _body[_tail] = data;
+        _tail = fStep(_tail);
         ++_size;
     }
     void push_front(T data)
     {
-        if (head == fStep(tail))
+        if (_head == fStep(_tail))
         {
-            tail = bStep(tail);
+            _tail = bStep(_tail);
             --_size;
         }
-        body[head = bStep(head)] = data;
+        _body[_head = bStep(_head)] = data;
         ++_size;
     }
 
     T back() const
     {
         if (_size == 0) { simple_error(); }
-        return body[bStep(tail)];
+        return _body[bStep(_tail)];
     }
     T front() const
     {
         if (_size == 0) { simple_error(); }
-        return body[head];
+        return _body[_head];
     }
 
     void pop_back()
     {
         if (_size != 0)
         {
-            tail = bStep(tail);
+            _tail = bStep(_tail);
             --_size;
         }
     }
@@ -257,7 +256,7 @@ public:
     {
         if (_size != 0)
         {
-            head = fStep(head);
+            _head = fStep(_head);
             --_size;
         }
     }
@@ -265,24 +264,19 @@ public:
     T& operator[](unsigned index) const
     {
         index = fStep(0, index);
-        if (index == tail)
+        if (index == _tail)
             ++index;
-        return body[index];
+        return _body[index];
     }
 
     void debugPrint() // Отладка 
     {
         for (int i = 0; i < _capacity + 1; i++)
-            std::cout << body[i];
-        std::cout << '\n' << hlppos() << '\n';
-    }
-
-    std::string hlppos() const
-    {
-        std::string res(_capacity + 1, '-');
-        res[head] = 'h';
-        res[tail] = 't';
-        return res;
+            std::cout << _body[i];
+        std::string htppos(_capacity + 1, '-');
+        htppos[_head] = 'h';
+        htppos[_tail] = 't';
+        std::cout << '\n' << htppos << '\n';
     }
 };
 
