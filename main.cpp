@@ -13,5 +13,8 @@ int main()
 
     rb.debugPrint();
 
+    rb.reserve(4);
+    rb.debugPrint();
+
     return 0;
 }

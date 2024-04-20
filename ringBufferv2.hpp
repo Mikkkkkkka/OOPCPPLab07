@@ -14,7 +14,7 @@ class RingBuffer
     unsigned _size;
     unsigned _capacity;
 
-    void simple_error() { std::cout << "AAA\n"; exit(-1); }
+    void simple_error() { std::cout << "AAA\n"; exit(-1); } // Надо бы сделать через exception, но лень
 
     unsigned fStep(unsigned I, const unsigned& step = 1) { return (I + _capacity + 1 + step) % (_capacity + 1); }
     unsigned bStep(unsigned I, const unsigned& step = 1) { return (I + _capacity + 1 - step) % (_capacity + 1); }
@@ -31,6 +31,20 @@ public:
     }
 
     ~RingBuffer() { free(body); }
+
+    void reserve(unsigned newSize)
+    {
+        T* temp = (T*)calloc(newSize + 1, sizeof(T));
+        if (!temp) { simple_error(); }
+        for (int i = 0; i < _size and i < newSize; i++)
+            temp[i] = body[fStep(head, i)];
+        free(body);
+        body = temp;
+        _capacity = newSize;
+        _size = std::min(_size, newSize);
+        head = 0;
+        tail = _size;
+    }
 
     class Iterator
     {
